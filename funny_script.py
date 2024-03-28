@@ -21,7 +21,7 @@ anwsers = {
     'Giappone': ('giapponese', None),
     'Grecia': ('greco/a', None),
     'India': ('indiano/a', None),
-    'America': ('americano/a', None),
+    "gli Stati Uniti (d'America)": ('americano/a', None),
     'Portogallo': ('portoghese', None),
     'Svizzera': ('svizzero/a', None),
     'Spagna': ('spagnolo/a', None),
@@ -98,12 +98,12 @@ def move_tile(tile_coordinates, x_offset, y_offset):
         Chyba że może innej biblioteki uzyć ale idk od czego to wsm zależy
         Jak się da za duży v_max to widac że on je upuszcza wcześniej :(
         """
-        pyautogui.dragTo(anwsers[country][1], duration=1)
+        pyautogui.dragTo(anwsers[country][1], duration=2)
         """
         Musi być tutaj sleep bo to GUI działa tak że jak trafisz to te kafelki się tak śmiesznie 
         gibają i nie można dobrze screena zrobić tego jednego kafelka kolejnego którego trzeba przeczytać co tam jest napisane
         """            
-        time.sleep(0.4)
+        time.sleep(1)
         return True
     return False
 
@@ -115,9 +115,11 @@ def main():
 
     if full_screen_mode:
         first_tile = (144, 128)
-        next_tile = 245
-        x_tile_offset = 95
-        y_tile_offset = 25
+        next_tile = 230
+        x_tile_offset = 100
+        y_tile_offset = 30
+        x_frame_offset = 60
+        y_frame_offset = 70
         pause = 'big_pause.png'
     else:
         pause = 'small_pause.png'
@@ -125,9 +127,8 @@ def main():
         next_tile = 150
         x_tile_offset = 55
         y_tile_offset = 15
-    
-    x_frame_offset = 50
-    y_frame_offset = 60
+        x_frame_offset = 50
+        y_frame_offset = 60
 
     for file in os.listdir("tiles"):
         os.remove(os.path.join("tiles", file))
@@ -150,8 +151,9 @@ def main():
         anwsers[key] = (value[0], find_text_position(screenshot, value[0], x_frame_offset, y_frame_offset))
         pyautogui.moveTo(anwsers[key][1])
 
-    count = sum(1 for value in anwsers.values() if value[1] is None)
-    print(f"Nie udało się znaleźć {count} pozycji")
+    for key, value in anwsers.items():
+        if value[1] is None:
+            print(f"Nie udało się znaleźć: {key}")
     
     pyautogui.click()
 
