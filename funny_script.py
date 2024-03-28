@@ -8,9 +8,9 @@ import os
 # Set the path to the tesseract executable
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-pyautogui.MINIMUM_DURATION = 0.1  
+pyautogui.MINIMUM_DURATION = 0.05 
 pyautogui.MINIMUM_SLEEP = 0.05
-pyautogui.PAUSE = 0.1
+pyautogui.PAUSE = 0.05
 
 anwsers = {
     'Italia': ('italiano/a', None),
@@ -86,24 +86,28 @@ def get_tile_content(coordinates, x_offset, y_offset):
     screenshot.save(os.path.join("tiles", new_filename))       # zapisanie kafelka do sprawdzenia czy dobrze tekst jest widoczny             
     text = pytesseract.image_to_string(screenshot)
     text = text.strip()
+    text = text.replace('\n', ' ')
+    text = text.split(' ')
     return text
 
+def find_key(input):
+    for key, value in anwsers.items():
+        for word in input:
+            if word.lower() in key.lower() and value[1]:
+                return key
+
 def move_tile(tile_coordinates, x_offset, y_offset):
+    key = None
     country = get_tile_content(tile_coordinates, x_offset, y_offset)
     print(f"Przeczytano: {country}")
-    pyautogui.moveTo(tile_coordinates)                                      # przesunięcie kursora na środek kafelka który biorę                 
-    if country and country in anwsers.keys() and anwsers[country][1]:       # jeśli kraj jest w słowniku i ma przypisaną pozycję
-        """
-        Nie da się niestety dragować z zerowym czasem bo on wtedy puszcza wcześniej te kafelki
-        Chyba że może innej biblioteki uzyć ale idk od czego to wsm zależy
-        Jak się da za duży v_max to widac że on je upuszcza wcześniej :(
-        """
-        pyautogui.dragTo(anwsers[country][1], duration=2)
-        """
-        Musi być tutaj sleep bo to GUI działa tak że jak trafisz to te kafelki się tak śmiesznie 
-        gibają i nie można dobrze screena zrobić tego jednego kafelka kolejnego którego trzeba przeczytać co tam jest napisane
-        """            
-        time.sleep(1)
+    pyautogui.moveTo(tile_coordinates)                                                                  # przesunięcie kursora na środek kafelka który biorę                 
+    if country and len(country) == 1 and country[0] in anwsers.keys() and anwsers[country[0]][1]:       # jeśli kraj jest w słowniku i ma przypisaną pozycję
+        key = country[0]
+    elif country and len(country) > 1:
+        key = find_key(country)
+    if key:
+        pyautogui.dragTo(anwsers[key][1], duration=1.2)          
+        time.sleep(0.1)
         return True
     return False
 
