@@ -4,13 +4,10 @@ import time
 import pytesseract
 from PIL import ImageGrab
 import os
+from pynput.mouse import Button, Controller
 
 # Set the path to the tesseract executable
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-pyautogui.MINIMUM_DURATION = 0.05 
-pyautogui.MINIMUM_SLEEP = 0.05
-pyautogui.PAUSE = 0.05
 
 anwsers = {
     'Italia': ('italiano/a', None),
@@ -51,7 +48,6 @@ def pause_game(pause_image):
     pyautogui.click(x, y)
 
 def locate_img(img):
-    # szukam póki nie znajdę (tutaj czas jeszcze nie ma znaczenia)
     while True:
         try:
             location = pyautogui.locateOnScreen(img, confidence=0.7)
@@ -60,20 +56,22 @@ def locate_img(img):
         except pyautogui.ImageNotFoundException:
             time.sleep(0.1)
 
-
-"""
-Ogólnie tutaj czasem nie znajduje niektóych narodowości
-I to jest dziwne bo to jest zwykle 1-3 rekordy ale co uruchomienie są różne
-"""
 def find_text_position(img, text_to_find, x_offset, y_offset):
-    data = pytesseract.image_to_data(img, lang='ita+eng', output_type=pytesseract.Output.DICT, config='--psm 3')
-    position = None
-    for i in range(len(data['text'])):
-        if data['text'][i].lower() == text_to_find.lower():
-            x = data['left'][i]
-            y = data['top'][i]
-            position = (x + x_offset, y - y_offset)     # przesunięcie bo chodzi o lokację ramki wyżej
-    return position
+    rectangles = [
+        ((40, 470), (1900, 560)),
+        ((40, 685), (1900, 775)),
+        ((40, 890), (1660, 980))
+    ]
+    for left_upper, right_lower in rectangles:
+        cropped_img = img.crop((*left_upper, *right_lower))
+        data = pytesseract.image_to_data(cropped_img, lang='ita', output_type=pytesseract.Output.DICT, config='--psm 4')
+        for i in range(len(data['text'])):
+            if data['text'][i].lower() == text_to_find.lower():
+                x = data['left'][i] + left_upper[0]
+                y = data['top'][i] + left_upper[1]
+                position = (x + x_offset, y - y_offset)
+                return position
+    return None
 
 def get_tile_content(coordinates, x_offset, y_offset):
     bottom_left = (coordinates[0] - x_offset, coordinates[1] + y_offset)    # tutaj przesunięcie w dół i w lewo relatywnie do środka kafelka
@@ -100,14 +98,21 @@ def move_tile(tile_coordinates, x_offset, y_offset):
     key = None
     country = get_tile_content(tile_coordinates, x_offset, y_offset)
     print(f"Przeczytano: {country}")
-    pyautogui.moveTo(tile_coordinates)                                                                  # przesunięcie kursora na środek kafelka który biorę                 
+    pyautogui.moveTo(tile_coordinates)
+    curr_x, curr_y = pyautogui.position()
+    mouse = Controller()                                                                  # przesunięcie kursora na środek kafelka który biorę                 
     if country and len(country) == 1 and country[0] in anwsers.keys() and anwsers[country[0]][1]:       # jeśli kraj jest w słowniku i ma przypisaną pozycję
         key = country[0]
     elif country and len(country) > 1:
         key = find_key(country)
     if key:
-        pyautogui.dragTo(anwsers[key][1], duration=1.2)          
-        time.sleep(0.1)
+        target_x, target_y = anwsers[key][1]
+        mouse.press(Button.left)
+        time.sleep(0.05)
+        mouse.move(target_x - curr_x, target_y - curr_y)  
+        time.sleep(0.05)
+        mouse.release(Button.left)  
+        time.sleep(0.2)
         return True
     return False
 
@@ -126,13 +131,13 @@ def main():
         y_frame_offset = 70
         pause = 'big_pause.png'
     else:
-        pause = 'small_pause.png'
         first_tile = (325, 270)
         next_tile = 150
         x_tile_offset = 55
         y_tile_offset = 15
         x_frame_offset = 50
         y_frame_offset = 60
+        pause = 'small_pause.png'
 
     for file in os.listdir("tiles"):
         os.remove(os.path.join("tiles", file))
@@ -145,7 +150,7 @@ def main():
     if full_screen_mode:
         make_fullscreen(full_screen_image)
 
-    time.sleep(1)
+    time.sleep(2)
     screenshot = ImageGrab.grab()
     screenshot.save("screenshot.png")
     
@@ -160,6 +165,7 @@ def main():
             print(f"Nie udało się znaleźć: {key}")
     
     pyautogui.click()
+    time.sleep(0.5)
 
     # tuaj ma znaczenie czas bo wtedy timer się zaczyna
     for _ in range(len(anwsers)):
